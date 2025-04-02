@@ -6,18 +6,51 @@ import numpy as np
 
 def reactive_obst_avoid(lidar):
     """
-    Simple obstacle avoidance
-    lidar : placebot object with lidar data
+    Simple obstacle avoidance using LiDAR.
+    
+    Parameters:
+    lidar : Placebot object with lidar data.
+    
+    Returns:
+    dict : Movement command with "forward" and "rotation".
     """
-    # TODO for TP1
+    # Get LiDAR data
+    laser_dist = lidar.get_sensor_values()  # List of distances
+    laser_angle = lidar.get_ray_angles()  # Corresponding angles
 
-    laser_dist = lidar.get_sensor_values()
-    speed = 0.0
-    rotation_speed = 0.0
+    # Convert polar coordinates to Cartesian (x, y)
+    # x0 = laser_dist * np.cos(laser_angle)
+    # y0 = laser_dist * np.sin(laser_angle)
 
-    command = {"forward": speed,
-               "rotation": rotation_speed}
+    # Default movement parameters
+    speed = 0.0  # Normal forward speed
+    rotation_speed = 0.0  # No rotation by default
 
+    # Obstacle detection: Check distance in front
+    front_idx = len(laser_dist) // 2  # Safer way to access the front distance
+    min_abs_dist = min(laser_dist)
+    min_dist = min(laser_dist[front_idx - 10:front_idx + 10])  # Check a range around the front
+    if min_dist < 40.0:  # Obstacle detected in front
+        speed = 0.0  # Slow down
+        # Obstacle on the left, turn right
+        if(sum(laser_dist[:front_idx]) < sum(laser_dist[front_idx+2:])):
+            rotation_speed = 0.4
+        else:
+            rotation_speed = -0.4
+    else:
+        if(laser_dist[90] < min_abs_dist + 10):  # Obstacle on the left
+            speed = 0.2
+            rotation_speed = 0.4
+        elif(laser_dist[270] < min_abs_dist + 10):  # Obstacle on the left
+            speed = 0.2
+            rotation_speed = -0.4
+    
+    # Return movement command
+    command = {
+        "forward": speed,
+        "rotation": rotation_speed
+    }
+    print(command)
     return command
 
 
