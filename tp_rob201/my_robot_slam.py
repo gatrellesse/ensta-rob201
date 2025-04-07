@@ -51,7 +51,7 @@ class MyRobotSlam(RobotAbstract):
         """
         Main control function executed at each time step
         """
-        return self.control_tp1()
+        return self.control_tp2()
 
     def control_tp1(self):
         """
@@ -70,8 +70,9 @@ class MyRobotSlam(RobotAbstract):
         Main control function with full SLAM, random exploration and path planning
         """
         pose = self.odometer_values()
-        goal = [0,0,0]
-
+        # goal_pose : [x, y, theta] nparray, target pose in odom or world frame
+        goal = [-1000,40,0]
+        
         # Compute new command speed to perform obstacle avoidance
         command = potential_field_control(self.lidar(), pose, goal)
 
