@@ -113,11 +113,9 @@ class OccupancyGrid:
                 y += y_step
                 error += d_x
         points = np.array(points).T
-        val_max = -40
+        val_max = 40
         val_t = self.occupancy_map[points[0], points[1]] + val
-        val = np.clip(val_t, 0, val_max)
-        # add value to the points
-        self.occupancy_map[points[0], points[1]] += val
+        self.occupancy_map[points[0], points[1]] = np.clip(val_t, -val_max, val_max)
 
     def add_map_points(self, points_x, points_y, val):
         """
@@ -135,7 +133,7 @@ class OccupancyGrid:
 
         val_max = 40
         val_t = self.occupancy_map[x_px, y_px] + val
-        self.occupancy_map[x_px, y_px] = np.clip(val_t, 0, val_max)
+        self.occupancy_map[x_px, y_px] = np.clip(val_t, -val_max, val_max)
         
 
     def display_plt(self, robot_pose, goal=None, traj=None):

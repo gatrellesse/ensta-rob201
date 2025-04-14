@@ -61,7 +61,7 @@ class TinySlam:
         y = pose[1] + dists * np.sin(angles_world)
         return x, y
         
-    def update_map(self, lidar, pose):
+    def update_map(self, lidar, pose, goal=None):
         """
         Bayesian map update with new observation
         lidar : placebot object with lidar data
@@ -71,12 +71,12 @@ class TinySlam:
         x, y = self.pol_to_coord(pose,lidar.get_sensor_values(), lidar.get_ray_angles())
         
         for x_coord, y_coord in zip(x, y):
-            self.grid.add_value_along_line(pose[0], pose[1], x_coord, y_coord, -0.2)
-        self.grid.add_map_points(x, y, 0.1)
+            self.grid.add_value_along_line(pose[0], pose[1], x_coord, y_coord, -1.0)
+        self.grid.add_map_points(x, y, 2.0)
         
         self.counter += 1
         if self.counter == 10:
-            self.grid.display_cv(robot_pose = pose)
+            self.grid.display_cv(robot_pose = pose, goal=goal)
             self.counter = 0
 
     # def compute(self):

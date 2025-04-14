@@ -29,7 +29,7 @@ class MyRobotSlam(RobotAbstract):
 
         # step counter to deal with init and display
         self.counter = 0
-
+        self.goal = None
         # Init SLAM object
         # Here we cheat to get an occupancy grid size that's not too large, by using the
         # robot's starting position and the maximum map size that we shouldn't know.
@@ -52,7 +52,7 @@ class MyRobotSlam(RobotAbstract):
         """
         Main control function executed at each time step
         """
-        self.tiny_slam.update_map(lidar = self.lidar(),pose = self.odometer_values())
+        self.tiny_slam.update_map(lidar = self.lidar(),pose = self.odometer_values(), goal=self.goal)
         return self.control_tp2()
 
     def control_tp1(self):
@@ -74,11 +74,11 @@ class MyRobotSlam(RobotAbstract):
         goal_reachead = False
         pose = self.odometer_values()
         # goal_pose : [x, y, theta] nparray, target pose in odom or world frame
-        goal = [-300,0]
+        self.goal = [-300,-10]
         
         # Compute new command speed to perform obstacle avoidance
         if goal_reachead == False:
-            command, goal_reachead = potential_field_control(self.lidar(), pose, goal)
+            command, goal_reachead = potential_field_control(self.lidar(), pose, self.goal)
         else:
             command = {"forward": 0.0, "rotation": 0.0}        
         return command
