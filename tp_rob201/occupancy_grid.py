@@ -77,6 +77,7 @@ class OccupancyGrid:
         """
 
         # convert to pixels
+        val_max = 40
         x_start, y_start = self.conv_world_to_map(x_0, y_0)
         x_end, y_end = self.conv_world_to_map(x_1, y_1)
 
@@ -112,7 +113,9 @@ class OccupancyGrid:
                 y += y_step
                 error += d_x
         points = np.array(points).T
-
+        val_max = -40
+        val_t = self.occupancy_map[points[0], points[1]] + val
+        val = np.clip(val_t, 0, val_max)
         # add value to the points
         self.occupancy_map[points[0], points[1]] += val
 
@@ -122,7 +125,7 @@ class OccupancyGrid:
         points_x, points_y :  list of x and y coordinates in m
         val :  value to add to the cells of the points
         """
-
+        
         x_px, y_px = self.conv_world_to_map(points_x, points_y)
 
         select = np.logical_and(np.logical_and(x_px >= 0, x_px < self.x_max_map),
@@ -130,7 +133,10 @@ class OccupancyGrid:
         x_px = x_px[select]
         y_px = y_px[select]
 
-        self.occupancy_map[x_px, y_px] += val
+        val_max = 40
+        val_t = self.occupancy_map[x_px, y_px] + val
+        self.occupancy_map[x_px, y_px] = np.clip(val_t, 0, val_max)
+        
 
     def display_plt(self, robot_pose, goal=None, traj=None):
         """

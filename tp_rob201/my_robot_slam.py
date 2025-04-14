@@ -47,10 +47,12 @@ class MyRobotSlam(RobotAbstract):
         # storage for pose after localization
         self.corrected_pose = np.array([0, 0, 0])
 
+
     def control(self):
         """
         Main control function executed at each time step
         """
+        self.tiny_slam.update_map(lidar = self.lidar(),pose = self.odometer_values())
         return self.control_tp2()
 
     def control_tp1(self):
@@ -69,11 +71,14 @@ class MyRobotSlam(RobotAbstract):
         Control function for TP2
         Main control function with full SLAM, random exploration and path planning
         """
+        goal_reachead = False
         pose = self.odometer_values()
         # goal_pose : [x, y, theta] nparray, target pose in odom or world frame
-        goal = [-1000,40,0]
+        goal = [-300,0]
         
         # Compute new command speed to perform obstacle avoidance
-        command = potential_field_control(self.lidar(), pose, goal)
-
+        if goal_reachead == False:
+            command, goal_reachead = potential_field_control(self.lidar(), pose, goal)
+        else:
+            command = {"forward": 0.0, "rotation": 0.0}        
         return command

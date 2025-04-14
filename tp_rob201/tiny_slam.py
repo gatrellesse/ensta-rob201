@@ -10,7 +10,7 @@ class TinySlam:
 
     def __init__(self, occupancy_grid: OccupancyGrid):
         self.grid = occupancy_grid
-
+        self.counter = 0
         # Origin of the odom frame in the map frame
         self.odom_pose_ref = np.array([0, 0, 0])
 
@@ -51,6 +51,16 @@ class TinySlam:
 
         return best_score
 
+    def pol_to_coord(self, pose, dists, angles):
+        """
+        Convert LiDAR ranges and angles to (x, y) world coordinates.
+        dists and angles should be lidar arrays.
+        """
+        angles_world = pose[2] + angles  # rotate by robot orientation
+        x = pose[0] + dists * np.cos(angles_world)
+        y = pose[1] + dists * np.sin(angles_world)
+        return x, y
+        
     def update_map(self, lidar, pose):
         """
         Bayesian map update with new observation
@@ -58,17 +68,27 @@ class TinySlam:
         pose : [x, y, theta] nparray, corrected pose in world coordinates
         """
         # TODO for TP3
+        x, y = self.pol_to_coord(pose,lidar.get_sensor_values(), lidar.get_ray_angles())
+        
+        for x_coord, y_coord in zip(x, y):
+            self.grid.add_value_along_line(pose[0], pose[1], x_coord, y_coord, -0.2)
+        self.grid.add_map_points(x, y, 0.1)
+        
+        self.counter += 1
+        if self.counter == 10:
+            self.grid.display_cv(robot_pose = pose)
+            self.counter = 0
 
-    def compute(self):
-        """ Useless function, just for the exercise on using the profiler """
-        # Remove after TP1
+    # def compute(self):
+    #     """ Useless function, just for the exercise on using the profiler """
+    #     # Remove after TP1
 
-        ranges = np.random.rand(3600)
-        ray_angles = np.arange(-np.pi, np.pi, np.pi / 1800)
+    #     ranges = np.random.rand(3600)
+    #     ray_angles = np.arange(-np.pi, np.pi, np.pi / 1800)
 
-        # Poor implementation of polar to cartesian conversion
-        points = []
-        for i in range(3600):
-            pt_x = ranges[i] * np.cos(ray_angles[i])
-            pt_y = ranges[i] * np.sin(ray_angles[i])
-            points.append([pt_x, pt_y])
+    #     # Poor implementation of polar to cartesian conversion
+    #     points = []
+    #     for i in range(3600):
+    #         pt_x = ranges[i] * np.cos(ray_angles[i])
+    #         pt_y = ranges[i] * np.sin(ray_angles[i])
+    #         points.append([pt_x, pt_y])
