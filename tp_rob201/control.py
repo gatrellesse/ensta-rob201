@@ -71,11 +71,11 @@ def potential_field_control(lidar, current_pose, goal_pose):
     # Parameters
     Kv = 0.5  # Attractive gain
     Kw = 10 # Angular gain
-    Kobs = 100 # Repulsive gain
+    Kobs = 5000 # Repulsive gain
     SAFE_DIST = 20.0  # Obstacle influence distance (meters)
-    phi_max = 0.5  # Maximum angle for full speed
+    phi_max = 0.8  # Maximum angle for full speed
     max_rot_speed = 1.0
-    min_dist_threshold = 0.5  # Minimum distance to consider goal reached
+    min_dist_threshold = 5.0  # Minimum distance to consider goal reached
     
     
     # Initialize commands
@@ -92,7 +92,6 @@ def potential_field_control(lidar, current_pose, goal_pose):
         gradient_f = np.array([Kv * dx/dRobo_Goal, Kv * dy/dRobo_Goal])
     else:
         gradient_f = np.zeros(2)
-    
     # Check if goal is reached
     goal_reachead = False
     if dRobo_Goal < min_dist_threshold:
@@ -114,10 +113,9 @@ def potential_field_control(lidar, current_pose, goal_pose):
             obstacle[1] = angle
 
     gradient_r = np.zeros(2)
-    magnitude = (Kobs / (obstacle[0]**3)) * (1.0/obstacle[0] - 1.0/SAFE_DIST) 
-    gradient_r[0] -= magnitude * np.cos(obstacle[1])
-    gradient_r[1] -= magnitude * np.sin(obstacle[1])
-    
+    magnitude = (Kobs / (obstacle[0]**2)) * (1.0/obstacle[0] - 1.0/SAFE_DIST) 
+    gradient_r[0] += magnitude * np.cos(obstacle[1])
+    gradient_r[1] += magnitude * np.sin(obstacle[1])
     # Combine forces
     F_total = gradient_f + gradient_r
 

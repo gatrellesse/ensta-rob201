@@ -30,6 +30,7 @@ class MyRobotSlam(RobotAbstract):
         # step counter to deal with init and display
         self.counter = 0
         self.goal = None
+        self.goal_reachead = False
         # Init SLAM object
         # Here we cheat to get an occupancy grid size that's not too large, by using the
         # robot's starting position and the maximum map size that we shouldn't know.
@@ -52,7 +53,18 @@ class MyRobotSlam(RobotAbstract):
         """
         Main control function executed at each time step
         """
-        self.tiny_slam.update_map(lidar = self.lidar(),pose = self.odometer_values(), goal=self.goal)
+        #TD3
+        #self.tiny_slam.update_map(lidar = self.lidar(),pose = self.odometer_values(), goal=self.goal)
+
+        #TD4
+        seuil = 0
+        
+        best_score = self.tiny_slam._score(self.lidar(), self.odometer_values())
+        print(f"Score: {best_score}")
+        self.tiny_slam.update_map(lidar = self.lidar(),pose = self.corrected_pose, goal=self.goal)
+        if best_score > seuil:
+            print(f"Score: {best_score}")
+            self.corrected_pose = self.tiny_slam.get_corrected_pose(self.odometer_values(), self.tiny_slam.odom_pose_ref)
         return self.control_tp2()
 
     def control_tp1(self):
@@ -71,14 +83,14 @@ class MyRobotSlam(RobotAbstract):
         Control function for TP2
         Main control function with full SLAM, random exploration and path planning
         """
-        goal_reachead = False
         pose = self.odometer_values()
         # goal_pose : [x, y, theta] nparray, target pose in odom or world frame
-        self.goal = [-300,-10]
+        self.goal = [-490,-400]
         
         # Compute new command speed to perform obstacle avoidance
-        if goal_reachead == False:
-            command, goal_reachead = potential_field_control(self.lidar(), pose, self.goal)
+        if self.goal_reachead == False:
+            command, self.goal_reachead = potential_field_control(self.lidar(), pose, self.goal)
         else:
-            command = {"forward": 0.0, "rotation": 0.0}        
+            command = {"forward": 0.0, "rotation": 0.0}  
+        command = {"forward": 0.0, "rotation": 0.0}        
         return command
