@@ -31,6 +31,7 @@ class MyRobotSlam(RobotAbstract):
         self.counter = 0
         self.goal = None
         self.goal_reachead = False
+        self.started = False
         # Init SLAM object
         # Here we cheat to get an occupancy grid size that's not too large, by using the
         # robot's starting position and the maximum map size that we shouldn't know.
@@ -47,7 +48,7 @@ class MyRobotSlam(RobotAbstract):
 
         # storage for pose after localization
         self.corrected_pose = np.array([0, 0, 0])
-
+        
 
     def control(self):
         """
@@ -59,13 +60,15 @@ class MyRobotSlam(RobotAbstract):
         #TD4
         seuil = 0
         
-        best_score = self.tiny_slam._score(self.lidar(), self.odometer_values())
-        print(f"Score: {best_score}")
-        self.tiny_slam.update_map(lidar = self.lidar(),pose = self.corrected_pose, goal=self.goal)
+        best_score = self.tiny_slam.localise(self.lidar(), self.odometer_values())
+        self.tiny_slam.update_map(lidar = self.lidar(),pose= self.odometer_values(), goal=self.goal)
+        print(f"Score: {best_score}, Pose: {self.corrected_pose}")
+
         if best_score > seuil:
-            print(f"Score: {best_score}")
+            print(f"Score: {best_score}, Pose: {self.corrected_pose}")
             self.corrected_pose = self.tiny_slam.get_corrected_pose(self.odometer_values(), self.tiny_slam.odom_pose_ref)
-        return self.control_tp2()
+            return self.control_tp2()
+        return {"forward": 0.0, "rotation": 0.0}  
 
     def control_tp1(self):
         """
@@ -92,5 +95,4 @@ class MyRobotSlam(RobotAbstract):
             command, self.goal_reachead = potential_field_control(self.lidar(), pose, self.goal)
         else:
             command = {"forward": 0.0, "rotation": 0.0}  
-        command = {"forward": 0.0, "rotation": 0.0}        
         return command

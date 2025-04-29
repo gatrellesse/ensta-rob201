@@ -22,21 +22,22 @@ class TinySlam:
         """
         # TODO for TP4
         max_Range = lidar.max_range
-        distance = lidar.get_sensor_values()
+        distances = lidar.get_sensor_values()
         angles = lidar.get_ray_angles()
         
-        angles_filtered = angles[distance<max_Range]
-        distances_filtered = distance[distance<max_Range]
-        x, y = self.pol_to_coord(pose, distances_filtered, angles_filtered)
+        angles_filtered = angles[distances<max_Range]
+        distances_filtered = distances[distances<max_Range]
+        x_world, y_world = self.pol_to_coord(pose, distances_filtered, angles_filtered)
         
-        idx_grid = self.grid.conv_world_to_map(x, y)
+        idx_grid = self.grid.conv_world_to_map(x_world, y_world)
         #Removing points out of map and values = 0 (log(0) = -inf)
-        idx_grid = (
-                np.clip(idx_grid[0], 0, self.grid.occupancy_map.shape[0] - 1),
-                np.clip(idx_grid[1], 0, self.grid.occupancy_map.shape[1] - 1)
-                )
+        # idx_grid = (
+        #         np.clip(idx_grid[0], 0, self.grid.occupancy_map.shape[0] - 1),
+        #         np.clip(idx_grid[1], 0, self.grid.occupancy_map.shape[1] - 1)
+        #         )
         score = np.sum(self.grid.occupancy_map[idx_grid])
-
+        #max score:+360*40 --> All points are obstacles
+        #min score:+360*40 --> None of the points are obstacles
         return score
 
     def get_corrected_pose(self, odom_pose, odom_pose_ref=None):
@@ -49,17 +50,18 @@ class TinySlam:
         """
         # TODO for TP4
         if odom_pose_ref is None:
-            return self.odom_pose_ref
-        # Odom
-        odom_pose = odom_pose + odom_pose_ref
-        xref = odom_pose[0]
-        yref = odom_pose[1]
-        # Absolut
-        alpha0 = np.arctan2(yref, xref)
-        d0 = np.sqrt(xref**2 + yref**2)
-        x = xref + d0 * np.cos(odom_pose[2] + alpha0)
-        y = xref + d0 * np.cos(odom_pose[2] + alpha0)
-        corrected_pose = [x, y, alpha0]
+            odom_pose_ref = self.odom_pose_ref
+        # Robot Odom
+        x0, y0, theta0 = odom_pose
+        x0ref, y0ref, theta0ref = odom_pose_ref
+        # Robot Absolut
+        alpha0 = np.arctan2(y0, x0)
+        d0 = np.sqrt(x0**2 + y0**2)
+
+        x = x0ref + d0 * np.cos(theta0ref + alpha0)
+        y = y0ref + d0 * np.sin(theta0ref + alpha0)
+        theta = theta0ref + alpha0
+        corrected_pose = np.array([x, y, theta])
 
         return corrected_pose
 
@@ -70,18 +72,19 @@ class TinySlam:
         odom : [x, y, theta] nparray, raw odometry position
         """
         # TODO for TP4
-        odom_pose = self.get_corrected_pose(raw_odom_pose)
+        odom_pose = raw_odom_pose#self.get_corrected_pose(raw_odom_pose)
         best_score = self._score(lidar = lidar, pose =odom_pose)
-        N = 10
-        for i in range(N):
-            sigma = 0.5
-            offset = np.random.normal(0, sigma, size=3) # e.g., array([0.12, -0.43, 0.05])
-            odom_pose_ref_offset = self.odom_pose_ref + offset
-            new_pose = self.get_corrected_pose(raw_odom_pose, odom_pose_ref_offset)
-            test_score = self._score(lidar = lidar, pose = new_pose)
-            if test_score > best_score:
-                best_score = test_score
-                self.odom_pose_ref = odom_pose_ref_offset
+        print(best_score)
+        # N = 0
+        # for i in range(N):
+        #     sigma = 0.05
+        #     offset = np.random.normal(0, sigma, size=3) # e.g., array([0.12, -0.43, 0.05])
+        #     odom_pose_ref_offset = self.odom_pose_ref + offset
+        #     new_pose = self.get_corrected_pose(raw_odom_pose, odom_pose_ref_offset)
+        #     test_score = self._score(lidar = lidar, pose = new_pose)
+        #     if test_score > best_score:
+        #         best_score = test_score
+        #         self.odom_pose_ref = odom_pose_ref_offset
 
         return best_score
 
@@ -106,12 +109,14 @@ class TinySlam:
         
         for x_coord, y_coord in zip(x, y):
             self.grid.add_value_along_line(pose[0], pose[1], x_coord, y_coord, -1.0)
-        self.grid.add_map_points(x, y, 2.0)
+        self.grid.add_map_points(x, y, 10.0)
         
         self.counter += 1
         if self.counter == 10:
             self.grid.display_cv(robot_pose = pose, goal=goal)
             self.counter = 0
+
+        self.occupancy_map = np.clip(self.grid.occupancy_map, -40, 40)
 
     # def compute(self):
     #     """ Useless function, just for the exercise on using the profiler """
