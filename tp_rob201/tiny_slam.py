@@ -72,7 +72,7 @@ class TinySlam:
         odom : [x, y, theta] nparray, raw odometry position
         """
         # TODO for TP4
-        odom_pose = raw_odom_pose#self.get_corrected_pose(raw_odom_pose)
+        odom_pose = self.get_corrected_pose(raw_odom_pose)
         best_score = self._score(lidar = lidar, pose =odom_pose)
         current_odom_pose_ref = self.odom_pose_ref
         N = 10

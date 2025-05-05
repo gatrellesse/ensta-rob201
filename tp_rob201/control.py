@@ -69,7 +69,7 @@ def potential_field_control(lidar, current_pose, goal_pose):
     """
     # TODO for TP2
     # Parameters
-    Kv = 0.8  # Attractive gain
+    Kv = 0.5  # Attractive gain
     Kw = 10 # Angular gain
     Kobs = 5000 # Repulsive gain
     SAFE_DIST = 20.0  # Obstacle influence distance (meters)
@@ -113,7 +113,7 @@ def potential_field_control(lidar, current_pose, goal_pose):
             obstacle[1] = angle
 
     gradient_r = np.zeros(2)
-    magnitude = (Kobs / (obstacle[0]**2)) * (1.0/obstacle[0] - 1.0/SAFE_DIST) 
+    magnitude = (Kobs / (obstacle[0]**3)) * (1.0/obstacle[0] - 1.0/SAFE_DIST) 
     gradient_r[0] += magnitude * np.cos(obstacle[1])
     gradient_r[1] += magnitude * np.sin(obstacle[1])
     # Combine forces
@@ -124,6 +124,7 @@ def potential_field_control(lidar, current_pose, goal_pose):
     theta = current_pose[2]
     phi_R = np.arctan2(np.sin(desired_angle - theta), np.cos(desired_angle - theta))
     #phi_R = desired_angle - theta
+    
     # Calculate forward speed based on alignment
     module_gradient_f = np.linalg.norm(gradient_f)
     if abs(phi_R) < phi_max:
