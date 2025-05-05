@@ -31,13 +31,13 @@ class TinySlam:
         
         idx_grid = self.grid.conv_world_to_map(x_world, y_world)
         #Removing points out of map and values = 0 (log(0) = -inf)
-        # idx_grid = (
-        #         np.clip(idx_grid[0], 0, self.grid.occupancy_map.shape[0] - 1),
-        #         np.clip(idx_grid[1], 0, self.grid.occupancy_map.shape[1] - 1)
-        #         )
+        idx_grid = (
+                np.clip(idx_grid[0], 0, self.grid.occupancy_map.shape[0] - 1),
+                np.clip(idx_grid[1], 0, self.grid.occupancy_map.shape[1] - 1)
+                )
         score = np.sum(self.grid.occupancy_map[idx_grid])
-        #max score:+360*40 --> All points are obstacles
-        #min score:+360*40 --> None of the points are obstacles
+        #max score:+360*40 = 14400 --> All points are obstacles
+        #min score:+360*40 =-14400 --> None of the points are obstacles
         return score
 
     def get_corrected_pose(self, odom_pose, odom_pose_ref=None):
@@ -60,9 +60,9 @@ class TinySlam:
 
         x = x0ref + d0 * np.cos(theta0ref + alpha0)
         y = y0ref + d0 * np.sin(theta0ref + alpha0)
-        theta = theta0ref + alpha0
+        theta = theta0ref + theta0
         corrected_pose = np.array([x, y, theta])
-
+        
         return corrected_pose
 
     def localise(self, lidar, raw_odom_pose):
@@ -74,17 +74,21 @@ class TinySlam:
         # TODO for TP4
         odom_pose = raw_odom_pose#self.get_corrected_pose(raw_odom_pose)
         best_score = self._score(lidar = lidar, pose =odom_pose)
-        print(best_score)
-        # N = 0
-        # for i in range(N):
-        #     sigma = 0.05
-        #     offset = np.random.normal(0, sigma, size=3) # e.g., array([0.12, -0.43, 0.05])
-        #     odom_pose_ref_offset = self.odom_pose_ref + offset
-        #     new_pose = self.get_corrected_pose(raw_odom_pose, odom_pose_ref_offset)
-        #     test_score = self._score(lidar = lidar, pose = new_pose)
-        #     if test_score > best_score:
-        #         best_score = test_score
-        #         self.odom_pose_ref = odom_pose_ref_offset
+        current_odom_pose_ref = self.odom_pose_ref
+        N = 10
+        for i in range(N):
+            sigma = 0.10
+            offset = np.random.normal(0, sigma, size=2) # e.g., array([0.12, -0.43, 0.05])
+            sigmaTheta = 0.05
+            offsetTheta = np.random.normal(0, sigmaTheta, size=1)
+            offset = np.append(offset, offsetTheta)
+
+            odom_pose_ref_offset = current_odom_pose_ref + offset
+            new_pose = self.get_corrected_pose(raw_odom_pose, odom_pose_ref_offset)
+            test_score = self._score(lidar = lidar, pose = new_pose)
+            if test_score > best_score:
+                best_score = test_score
+                self.odom_pose_ref = odom_pose_ref_offset
 
         return best_score
 
@@ -105,7 +109,7 @@ class TinySlam:
         pose : [x, y, theta] nparray, corrected pose in world coordinates
         """
         # TODO for TP3
-        x, y = self.pol_to_coord(pose,lidar.get_sensor_values(), lidar.get_ray_angles())
+        x, y = self.pol_to_coord(pose, lidar.get_sensor_values(), lidar.get_ray_angles())
         
         for x_coord, y_coord in zip(x, y):
             self.grid.add_value_along_line(pose[0], pose[1], x_coord, y_coord, -1.0)
@@ -115,19 +119,3 @@ class TinySlam:
         if self.counter == 10:
             self.grid.display_cv(robot_pose = pose, goal=goal)
             self.counter = 0
-
-        self.occupancy_map = np.clip(self.grid.occupancy_map, -40, 40)
-
-    # def compute(self):
-    #     """ Useless function, just for the exercise on using the profiler """
-    #     # Remove after TP1
-
-    #     ranges = np.random.rand(3600)
-    #     ray_angles = np.arange(-np.pi, np.pi, np.pi / 1800)
-
-    #     # Poor implementation of polar to cartesian conversion
-    #     points = []
-    #     for i in range(3600):
-    #         pt_x = ranges[i] * np.cos(ray_angles[i])
-    #         pt_y = ranges[i] * np.sin(ray_angles[i])
-    #         points.append([pt_x, pt_y])

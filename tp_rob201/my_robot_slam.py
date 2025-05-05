@@ -59,16 +59,13 @@ class MyRobotSlam(RobotAbstract):
 
         #TD4
         seuil = 0
-        
         best_score = self.tiny_slam.localise(self.lidar(), self.odometer_values())
-        self.tiny_slam.update_map(lidar = self.lidar(),pose= self.odometer_values(), goal=self.goal)
-        print(f"Score: {best_score}, Pose: {self.corrected_pose}")
-
-        if best_score > seuil:
-            print(f"Score: {best_score}, Pose: {self.corrected_pose}")
-            self.corrected_pose = self.tiny_slam.get_corrected_pose(self.odometer_values(), self.tiny_slam.odom_pose_ref)
-            return self.control_tp2()
-        return {"forward": 0.0, "rotation": 0.0}  
+            
+        # if best_score > seuil:
+        #     print(f"Score: {best_score}, Pose: {self.corrected_pose}")
+        self.corrected_pose = self.tiny_slam.get_corrected_pose(self.odometer_values(), self.tiny_slam.odom_pose_ref)
+        self.tiny_slam.update_map(lidar = self.lidar(), pose= self.corrected_pose, goal=self.goal)
+        return self.control_tp2()
 
     def control_tp1(self):
         """
@@ -86,7 +83,9 @@ class MyRobotSlam(RobotAbstract):
         Control function for TP2
         Main control function with full SLAM, random exploration and path planning
         """
-        pose = self.odometer_values()
+        #tp3
+        #pose = self.odometer_values()
+        pose = self.corrected_pose
         # goal_pose : [x, y, theta] nparray, target pose in odom or world frame
         self.goal = [-490,-400]
         

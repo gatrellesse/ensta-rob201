@@ -69,11 +69,11 @@ def potential_field_control(lidar, current_pose, goal_pose):
     """
     # TODO for TP2
     # Parameters
-    Kv = 0.5  # Attractive gain
+    Kv = 0.8  # Attractive gain
     Kw = 10 # Angular gain
     Kobs = 5000 # Repulsive gain
     SAFE_DIST = 20.0  # Obstacle influence distance (meters)
-    phi_max = 0.8  # Maximum angle for full speed
+    phi_max = 0.3  # Maximum angle for full speed
     max_rot_speed = 1.0
     min_dist_threshold = 5.0  # Minimum distance to consider goal reached
     
@@ -135,5 +135,4 @@ def potential_field_control(lidar, current_pose, goal_pose):
     vitesse = np.clip(vitesse,-max_rot_speed,max_rot_speed)
     # Calculate rotation speed
     w_speed = np.clip(Kw * phi_R, -max_rot_speed, max_rot_speed)
-    
     return {"forward": vitesse, "rotation": w_speed}, goal_reachead
