@@ -7,7 +7,7 @@ import numpy as np
 from place_bot.entities.robot_abstract import RobotAbstract
 from place_bot.entities.odometer import OdometerParams
 from place_bot.entities.lidar import LidarParams
-
+import time 
 from tiny_slam import TinySlam
 
 from control import potential_field_control, reactive_obst_avoid
@@ -72,7 +72,6 @@ class MyRobotSlam(RobotAbstract):
         Control function for TP1
         Control funtion with minimal random motion
         """
-        self.tiny_slam.compute()
 
         # Compute new command speed to perform obstacle avoidance
         command = reactive_obst_avoid(self.lidar())
@@ -86,9 +85,7 @@ class MyRobotSlam(RobotAbstract):
         #tp3
         #pose = self.odometer_values()
         pose = self.corrected_pose
-        # goal_pose : [x, y, theta] nparray, target pose in odom or world frame
-        self.goal = [-490,-400]
-        
+        self.goal = [-490,200]
         # Compute new command speed to perform obstacle avoidance
         if self.goal_reachead == False:
             command, self.goal_reachead = potential_field_control(self.lidar(), pose, self.goal)
