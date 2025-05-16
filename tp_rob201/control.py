@@ -70,7 +70,7 @@ def attractive_field(Kv, gx, gy, xp, yp):
 
     return gradient_f, dRobo_Goal
 
-def repulsive_field(lidar: 'LidarSensor', repulsive_gain,
+def repulsive_field(lidar, repulsive_gain,
                    SAFE_DIST, current_pose):
     """
     Compute repulsive field vector for obstacle avoidance.

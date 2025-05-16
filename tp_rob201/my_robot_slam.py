@@ -34,7 +34,6 @@ class MyRobotSlam(RobotAbstract):
         self.traj_goals = deque([[-490,0], [-810, -140], [-920, -400]])
         self.goal = self.traj_goals.popleft()
         self.goal_reachead = False
-        self.started = False
         self.seuil = 200
         self.last_wall_side = "unknown"
         self.wall_mode = False
@@ -75,7 +74,11 @@ class MyRobotSlam(RobotAbstract):
             self.counter += 1
             if(self.counter == 20):
                 self.seuil = 4500
+            
             self.corrected_pose = self.tiny_slam.get_corrected_pose(self.odometer_values(), self.tiny_slam.odom_pose_ref)
+            vs = self.planner.get_neighbors(self.corrected_pose[:2])
+            print(f"Robot: {self.corrected_pose} voisin {vs}")
+            input(" ")
             self.tiny_slam.update_map(lidar = self.lidar(), pose= self.corrected_pose, goal=self.goal)
         if(self.is_stuck()):
             self.wall_mode = True
