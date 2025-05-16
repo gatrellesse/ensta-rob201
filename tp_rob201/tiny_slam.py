@@ -75,7 +75,7 @@ class TinySlam:
         odom_pose = self.get_corrected_pose(raw_odom_pose)
         best_score = self._score(lidar = lidar, pose =odom_pose)
         current_odom_pose_ref = self.odom_pose_ref
-        N = 10
+        N = 100
         for i in range(N):
             sigma = 0.10
             offset = np.random.normal(0, sigma, size=2) # e.g., array([0.12, -0.43, 0.05])

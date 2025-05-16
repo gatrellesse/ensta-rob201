@@ -119,69 +119,103 @@ def repulsive_field(lidar: 'LidarSensor', repulsive_gain,
         gradient = (repulsive_gain / (distance**3)) * scale_factor * robot_to_obstacle
     else:
         gradient = np.zeros(2)
-    print(min_dist)
     return gradient
 
-def space_field(lidar: 'LidarSensor', Kv, current_pose):
+def wall_Follower(lidar, last_side, counter ,clearance_wall=25, dst_lim = 60):
     """
-    Compute repulsive field vector for obstacle avoidance.
+    Wall following using LiDAR. Follows a wall on the specified side.
     
-    Args:
-        lidar: Lidar sensor object with get_sensor_values() and get_ray_angles() methods
-        repulsive_gain: Scaling factor for repulsive force (Kobs)
-        safe_distance: Maximum influence distance for obstacles (meters)
-        current_pose: Current robot pose [x, y, theta] in world coordinates
-        
+    Parameters:
+    - lidar: LiDAR sensor with get_sensor_values()
+    - clearance_wall: Desired distance from the wall (in cm)
+    - side: "right" or "left"
+    
+    Down idx = 0
+    Right idx = 90
+    Front idx = 180
+    Left idx = 270
+    ref: https://f1tenth-coursekit.readthedocs.io/en/latest/assignments/labs/lab3.html
     Returns:
-        np.ndarray: 2D repulsive gradient vector [Fx, Fy]
+    - dict with "forward" and "rotation" keys
     """
-    # Get filtered lidar measurements within safe distance
-    distances = np.array(lidar.get_sensor_values())
-    angles = np.array(lidar.get_ray_angles())
-    max_range = lidar.max_range
-
-    # Filter out invalid distance readings
-    valid_mask = distances < max_range
-
-    # Build index mask: keep indexes in [90, 270]
-    n = len(distances)  # Total number of LiDAR rays
-    index_mask = np.zeros(n, dtype=bool)
-    index_mask[270:360] = True       # [90, 270] inclusive
-
-    # Combine with valid distance readings
-    final_mask = valid_mask & index_mask
-
-    # Apply mask
-    distances = distances[final_mask]
-    angles = angles[final_mask]
-    # Return zero vector if no obstacles in range
-    if len(distances) == 0:
-        return np.zeros(2)
     
-    # Find  obstacle
-    max_idx = np.argmax(distances)
-    max_dists = distances[max_idx]
-    max_angles = angles[max_idx]
-    gradient = np.zeros(2)
-    # Calculate obstacle position in world frame
-    for max_dist, max_angle in zip(max_dists, max_angles):
-        x_robot, y_robot, theta_robot = current_pose
-        obstacle_x = x_robot + max_dist * np.cos(max_angle + theta_robot)
-        obstacle_y = y_robot + max_dist * np.sin(max_angle + theta_robot)
-        obstacle_pos = np.array([obstacle_x, obstacle_y])
-        
-        # Calculate robot-to-obstacle vector and distance
-        robot_pos = current_pose[:2]
-        robot_to_obstacle = obstacle_pos - robot_pos
-        dRobo_Space = np.linalg.norm(robot_to_obstacle)  
+    distances = np.array(lidar.get_sensor_values())
 
-        if distance <= SAFE_DIST and distance > 1e-6:  # Avoid division by zero
-            scale_factor = (1.0/distance - 1.0/SAFE_DIST)
-            gradient += (repulsive_gain / (distance**3)) * scale_factor * robot_to_obstacle
-        else:
-            gradient += np.zeros(2)
+    # Parameters
+    forward = 0.02
+    Kp_dist = 0.01   # Gain to correct distance error
+    Kp_angle = 0.02     # Gain to align with wall
+    min_idx = np.argmin(distances)
+    
+    side = "left"
+    """
+             180
+              y+
+              ↑
+    left      |    right
+              |
+    y– ←----- 0 -----→ x+ 90
+        (robot)
+    """
+    if min_idx < 180:
+        side = "right"
 
-    return gradient_s
+    if side == "right":
+        idx_a = 90  # Right
+        idx_b = 150  # Front-right
+    else:
+        idx_a = 270  # Left
+        idx_b = 240  # Front-left
+    
+    #
+    # Get distances at two angles
+    dist_a = distances[idx_a]
+    dist_b = distances[idx_b]
+
+    # Compute angle of the wall (relative to robot)
+    alpha = np.arctan2(dist_b * np.cos(np.radians(idx_b - idx_a)) - dist_a,
+                       dist_b * np.sin(np.radians(idx_b - idx_a)))
+    
+    # Estimate distance from wall (perpendicular)
+    distance_to_wall = dist_a * np.cos(alpha)
+
+    # Compute errors
+    error_dist = clearance_wall - distance_to_wall
+    error_angle = alpha
+
+    # Control rotation
+    rotation = Kp_dist * error_dist + Kp_angle * error_angle
+    # Only apply distance correction when aligned with wall
+    if abs(error_angle) < 0.1:  # Only when reasonably aligned
+        error_dist = clearance_wall - distance_to_wall
+        forward = 0.03
+    else:
+        error_dist = 0
+    # Slow down if obstacle in front
+    front_dist = distances[180]
+
+    if front_dist < 40 and counter >30:
+        forward = 0.0
+        print("Front object detected while wall following")
+        rotation = 0.5 if side == "right" else -0.5  # Turn away
+        wall_mode = False
+        return {"forward": forward, "rotation": rotation}, side, wall_mode
+
+    # Check if there is a space so we can stop moving
+    wall_mode = True
+    # i let 15 degree as gap to robot be able to pass the gap before stopping
+    if last_side == "right" and distances[75] > dst_lim and distances[90] > dst_lim  and distances[105] > dst_lim:
+        print("Right not wall detected")
+        wall_mode = False
+    elif last_side == "left" and distances[285] > dst_lim and distances[270] > dst_lim and distances[255] > dst_lim :
+        print("Left not wall detected")
+        wall_mode = False
+    # limiting command values
+    forward  = np.clip(forward, -1, 1)
+    rotation = np.clip(rotation, -1, 1)
+    print(error_angle, rotation)
+    return {"forward": forward, "rotation": rotation}, side, wall_mode
+
 
 def potential_field_control(lidar, current_pose, goal_pose):
     """
@@ -195,11 +229,11 @@ def potential_field_control(lidar, current_pose, goal_pose):
     """
     # TODO for TP2
     # Parameters
-    Kv = 0.20  # Attractive gain
-    Kw = 1 # Angular gain
-    Kobs = 6000 # Repulsive gain
-    SAFE_DIST = 40.0  # Obstacle influence distance (meters)
-    phi_max = 0.030  # Maximum angle for full speed
+    Kv = 0.5  # Attractive gain
+    Kw = 0.2 # Angular gain
+    Kobs = 4000 # Repulsive gain
+    SAFE_DIST = 80.0  # Obstacle influence distance (meters)
+    phi_max = 0.07  # Maximum angle for full speed
     max_rot_speed = 1.0
     min_dist_threshold = 5.0  # Minimum distance to consider goal reached
     
@@ -223,7 +257,6 @@ def potential_field_control(lidar, current_pose, goal_pose):
     desired_angle = np.arctan2(F_total[1], F_total[0])
     theta = current_pose[2]
     phi_R = np.arctan2(np.sin(desired_angle - theta), np.cos(desired_angle - theta))
-    #phi_R = desired_angle - theta
     
     # Calculate forward speed based on alignment
     module_gradient_F = np.linalg.norm(F_total)
@@ -234,4 +267,88 @@ def potential_field_control(lidar, current_pose, goal_pose):
     
     vitesse = np.clip(vitesse,-max_rot_speed,max_rot_speed)
     w_speed = np.clip(Kw * phi_R, -max_rot_speed, max_rot_speed)
+    # print("Rotation: ",w_speed, " Phi_R: ",phi_R)
     return {"forward": vitesse, "rotation": w_speed}, goal_reachead
+
+# class WallFollowerPID:
+#     def __init__(self):
+#         self.prev_error = 0.0
+#         self.integral = 0.0
+#         self.last_side = "Unknown"
+
+#     def compute_command(self, lidar, dt=0.1, wall_clearance = 15, dst_lim = 60):
+#         distances = np.array(lidar.get_sensor_values())
+        
+#         # Parameters
+#         forward = 0.02
+#         Kp_dist = 0.01     # Gain to correct distance error
+#         Kp_angle = 0.5     # Gain to align with wall
+#         min_idx = np.argmin(distances)
+#         side = "left"
+#         """
+#                 180
+#                 y+
+#                 ↑
+#         left      |    right
+#                 |
+#         y– ←----- 0 -----→ x+ 90
+#             (robot)
+#         """
+#         if min_idx < 180:
+#             side = "right"
+
+#         if side == "right":
+#             idx_a = 90  # Right
+#             idx_b = 150  # Front-right
+#         else:
+#             idx_a = 270  # Left
+#             idx_b = 240  # Front-left
+        
+#         #
+#         # Get distances at two angles
+#         dist_a = distances[idx_a]
+#         dist_b = distances[idx_b]
+
+#         # Compute angle of the wall (relative to robot)
+#         alpha = np.arctan2(dist_b * np.cos(np.radians(idx_b - idx_a)) - dist_a,
+#                         dist_b * np.sin(np.radians(idx_b - idx_a)))
+        
+#         # Estimate distance from wall (perpendicular)
+#         distance_to_wall = dist_a * np.cos(alpha)
+
+#         # Compute errors
+#         error_dist = wall_clearance - distance_to_wall
+#         error_angle = alpha
+
+#         # Control rotation
+#         #omega = Kp_dist * error_dist + Kp_angle * error_angle
+#         error = error_dist + 50 * error_angle  # angle scaled to cm scale
+
+#         # PID terms
+#         Kp = 0.005
+#         Ki = 0.0001
+#         Kd = 0.002
+
+#         self.integral += error * dt
+#         derivative = (error - self.prev_error) / dt
+#         self.prev_error = error
+
+#         rotation = Kp * error + Ki * self.integral + Kd * derivative
+
+
+#         # Slow down if obstacle in front
+#         front_dist = distances[180]
+
+#         if front_dist < 30:
+#             forward = 0.0
+#             rotation = 0.5 if side == "right" else -0.5  # Turn away
+
+#         # Check if there is a space so we can stop moving
+#         # check if radar goes beyond dst lim
+#         wall_mode = True
+#         if self.last_side == "right" and distances[90] > dst_lim:
+#             wall_mode = False
+#         elif self.last_side == "left" and distances[270] > dst_lim:
+#             wall_mode = False
+#         self.last_side = side
+#         return {"forward": forward, "rotation": rotation}, wall_mode

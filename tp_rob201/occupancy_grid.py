@@ -163,6 +163,7 @@ class OccupancyGrid:
         # plt.show()
         plt.pause(0.001)
 
+            
     def display_cv(self, robot_pose, goal=None, traj=None):
         """
         Screen display of map and robot pose,
@@ -193,10 +194,12 @@ class OccupancyGrid:
         pt2_x, pt2_y = self.conv_world_to_map(pt2_x, pt2_y)
 
         pt1_x, pt1_y = self.conv_world_to_map(robot_pose[0], robot_pose[1])
-
-        # print("robot_pose", robot_pose)
         pt1 = (int(pt1_x), self.y_max_map - int(pt1_y))
         pt2 = (int(pt2_x), self.y_max_map - int(pt2_y))
+        color = (255, 255, 0)
+        # Obs within the search
+        cv2.circle(img_color, pt1, 60, color, 1)
+        cv2.circle(img_color, pt1, 25, (255,150,0), 1)
         cv2.arrowedLine(img=img_color, pt1=pt1, pt2=pt2,
                         color=(0, 0, 255), thickness=2)
         cv2.imshow("map slam", img_color)

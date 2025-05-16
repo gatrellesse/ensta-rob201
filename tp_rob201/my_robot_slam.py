@@ -10,9 +10,11 @@ from place_bot.entities.lidar import LidarParams
 import time 
 from tiny_slam import TinySlam
 
-from control import potential_field_control, reactive_obst_avoid
+from control import potential_field_control, reactive_obst_avoid, wall_Follower
 from occupancy_grid import OccupancyGrid
 from planner import Planner
+from collections import deque
+
 
 
 # Definition of our robot controller
@@ -29,9 +31,14 @@ class MyRobotSlam(RobotAbstract):
 
         # step counter to deal with init and display
         self.counter = 0
-        self.goal = None
+        self.traj_goals = deque([[-490,0], [-810, -140], [-920, -400]])
+        self.goal = self.traj_goals.popleft()
         self.goal_reachead = False
         self.started = False
+        self.seuil = 200
+        self.last_wall_side = "unknown"
+        self.wall_mode = False
+        self.wall_counter = 0
         # Init SLAM object
         # Here we cheat to get an occupancy grid size that's not too large, by using the
         # robot's starting position and the maximum map size that we shouldn't know.
@@ -47,24 +54,36 @@ class MyRobotSlam(RobotAbstract):
         self.planner = Planner(self.occupancy_grid)
 
         # storage for pose after localization
+        self.stored_poses = deque(maxlen=300)
         self.corrected_pose = np.array([0, 0, 0])
         
-
+    
     def control(self):
         """
         Main control function executed at each time step
         """
         #TD3
         #self.tiny_slam.update_map(lidar = self.lidar(),pose = self.odometer_values(), goal=self.goal)
-
+        
         #TD4
-        seuil = 0
-        best_score = self.tiny_slam.localise(self.lidar(), self.odometer_values())
-            
-        # if best_score > seuil:
-        #     print(f"Score: {best_score}, Pose: {self.corrected_pose}")
-        self.corrected_pose = self.tiny_slam.get_corrected_pose(self.odometer_values(), self.tiny_slam.odom_pose_ref)
-        self.tiny_slam.update_map(lidar = self.lidar(), pose= self.corrected_pose, goal=self.goal)
+        best_score = self.tiny_slam.localise(self.lidar(), self.odometer_values())            
+        
+        # We update only if the odotometry is not too bad(test the seuil and
+        # see if the map doesnt change)
+        if((self.wall_mode == False and best_score > self.seuil) or self.counter <= 20):
+            #print(f"Score: {best_score}")
+            self.counter += 1
+            if(self.counter == 20):
+                self.seuil = 4500
+            self.corrected_pose = self.tiny_slam.get_corrected_pose(self.odometer_values(), self.tiny_slam.odom_pose_ref)
+            self.tiny_slam.update_map(lidar = self.lidar(), pose= self.corrected_pose, goal=self.goal)
+        if(self.is_stuck()):
+            self.wall_mode = True
+            self.corrected_pose = self.tiny_slam.get_corrected_pose(self.odometer_values())
+            self.tiny_slam.update_map(lidar = self.lidar(), pose= self.corrected_pose, goal=self.goal)
+            return self.control_wall_Follower()
+        else:
+            self.wall_mode = False
         return self.control_tp2()
 
     def control_tp1(self):
@@ -76,7 +95,19 @@ class MyRobotSlam(RobotAbstract):
         # Compute new command speed to perform obstacle avoidance
         command = reactive_obst_avoid(self.lidar())
         return command
-
+    
+    def is_stuck(self, std_thresh=15.0):
+        self.stored_poses.append(self.corrected_pose[:2])
+        if len(self.stored_poses) < 300:
+            return False
+        
+        x_coords, y_coords = zip(*self.stored_poses)
+        std_x = np.std(x_coords)
+        std_y = np.std(y_coords)
+        # print("Std x: ",std_x," Std y: ",std_y)
+        # If std deviation in x and y are both small, it's not moving much
+        if std_x < std_thresh and std_y < std_thresh:  # e.g., 5 cm
+            return True
     def control_tp2(self):
         """
         Control function for TP2
@@ -85,10 +116,25 @@ class MyRobotSlam(RobotAbstract):
         #tp3
         #pose = self.odometer_values()
         pose = self.corrected_pose
-        self.goal = [-490,200]
         # Compute new command speed to perform obstacle avoidance
         if self.goal_reachead == False:
             command, self.goal_reachead = potential_field_control(self.lidar(), pose, self.goal)
         else:
+            if(self.traj_goals):
+                self.goal = self.traj_goals.popleft()
+                self.goal_reachead = False
             command = {"forward": 0.0, "rotation": 0.0}  
         return command
+
+    def control_wall_Follower(self):
+        
+        if self.goal_reachead == False:
+            print("Wall following mode activated with ", self.last_wall_side)
+            self.wall_counter += 1
+            command, self.last_wall_side , mode_flag = wall_Follower(self.lidar(), self.last_wall_side, self.wall_counter)
+            if self.wall_mode == True and mode_flag == False:
+                print("Turning off wall mode and reseting stored poses")
+                self.wall_counter = 0
+                self.wall_mode = mode_flag
+                self.stored_poses.clear()
+            return command
