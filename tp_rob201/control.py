@@ -273,20 +273,20 @@ def potential_field_control(lidar, current_pose, goal_pose, mode = "Normal"):
     # print("Rotation: ",w_speed, " Phi_R: ",phi_R)
     return {"forward": vitesse, "rotation": w_speed}, goal_reachead
 
-def local_control(current_pose, goal_pose):
-    """
-    Local control function to compute forward and rotation speeds
-    based on the current pose and the goal pose.
+# def local_control(current_pose, goal_pose):
+#     """
+#     Local control function to compute forward and rotation speeds
+#     based on the current pose and the goal pose.
     
-    Parameters:
-    - current_pose: [x, y, theta] nparray, current pose in world coordinates
-    - goal_pose: [x, y, theta] nparray, goal pose in world coordinates
+#     Parameters:
+#     - current_pose: [x, y, theta] nparray, current pose in world coordinates
+#     - goal_pose: [x, y, theta] nparray, goal pose in world coordinates
     
-    Returns:
-    - command: dict with "forward" and "rotation" keys
-    """
+#     Returns:
+#     - command: dict with "forward" and "rotation" keys
+#     """
 
-    command = {"forward":forward, "rotation": rotation}
-    return command
+#     command = {"forward":forward, "rotation": rotation}
+#     return command
 
 

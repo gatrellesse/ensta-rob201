@@ -35,7 +35,22 @@ class OccupancyGrid:
                                           cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'),
                                           7,
                                           (self.x_max_map, self.y_max_map))
-
+    def enlarge_obstacles(self, spread_distance = 1): ## ! CHANGES IN PLACE ##
+        MAX_OCCUPANCY = 40
+        fat_map = (self.occupancy_map).copy()
+        print("Enlarging obstacles")
+        for x in range(self.x_max_map):
+            for y in range(self.y_max_map):
+                if self.occupancy_map[x, y] > 0:
+                    # Enlarge the obstacle
+                    for i in range(-spread_distance, spread_distance + 1):
+                        for j in range(-spread_distance, spread_distance + 1):
+                            if (x + i >= 0 and x + i < self.x_max_map and
+                                    y + j >= 0 and y + j < self.y_max_map):#Cell inside the map
+                                fat_map[x + i, y + j] = MAX_OCCUPANCY
+        self.occupancy_map = fat_map
+        return
+        
     def conv_world_to_map(self, x_world, y_world):
         """
         Convert from world coordinates to map coordinates (i.e. cell index in the grid map)

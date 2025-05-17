@@ -30,7 +30,7 @@ class TinySlam:
         x_world, y_world = self.pol_to_coord(pose, distances_filtered, angles_filtered)
         
         idx_grid = self.grid.conv_world_to_map(x_world, y_world)
-        #Removing points out of map and values = 0 (log(0) = -inf)
+        #Removing points out of map and clipping it
         idx_grid = (
                 np.clip(idx_grid[0], 0, self.grid.occupancy_map.shape[0] - 1),
                 np.clip(idx_grid[1], 0, self.grid.occupancy_map.shape[1] - 1)
@@ -112,6 +112,8 @@ class TinySlam:
         # TODO for TP3
         if mode != "Planner": 
             traj = None
+        else:
+            goal = np.array([0, 0])
         x, y = self.pol_to_coord(pose, lidar.get_sensor_values(), lidar.get_ray_angles())
         for x_coord, y_coord in zip(x, y):
             self.grid.add_value_along_line(pose[0], pose[1], x_coord, y_coord, -1.0)
