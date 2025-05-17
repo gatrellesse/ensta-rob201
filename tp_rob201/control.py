@@ -121,6 +121,65 @@ def repulsive_field(lidar, repulsive_gain,
         gradient = np.zeros(2)
     return gradient
 
+
+def potential_field_control(lidar, current_pose, goal_pose, mode = "Normal"):
+    """
+    Control using potential field for goal reaching and obstacle avoidance
+    lidar : placebot object with lidar data
+    current_pose : [x, y, theta] nparray, current pose in odom or world frame
+    goal_pose : -[x, y, theta] nparray, target pose in odom or world frame
+    Notes: As lidar and odom are local only data, goal and gradient will be defined either in
+    robot (x,y) frame (centered on robot, x forward, y on left) or in odom (centered / aligned
+    on initial pose, x forward, y on left)
+    """
+    # TODO for TP2
+    # Parameters
+    Kv = 0.5  # Attractive gain
+    Kw = 0.2 # Angular gain
+    Kobs = 4000 # Repulsive gain
+    SAFE_DIST = 80.0  # Obstacle influence distance (meters)
+    phi_max = 0.07  # Maximum angle for full speed
+    max_rot_speed = 1.0
+    min_dist_threshold = 5.0  # Minimum distance to consider goal reached
+    
+    
+    # Initialize commands
+    vitesse = 0.0
+    w_speed = 0.0
+    
+    gradient_f, dRobo_Goal = attractive_field(Kv, goal_pose[0], goal_pose[1], current_pose[0], current_pose[1])
+    goal_reachead = False
+    if dRobo_Goal < min_dist_threshold:
+        print("Goal reached")
+        goal_reachead = True
+        return {"forward": 0.0, "rotation": 0.0}, goal_reachead
+    
+
+    if mode == "Normal":
+        gradient_r = repulsive_field(lidar, Kobs, SAFE_DIST, current_pose)
+    else: # When in planner mode it shouldn`t avoid obstacles
+        gradient_r = 0 
+    F_total = gradient_f  - gradient_r
+
+    # Calculate desired movement direction
+    desired_angle = np.arctan2(F_total[1], F_total[0])
+    theta = current_pose[2]
+    phi_R = np.arctan2(np.sin(desired_angle - theta), np.cos(desired_angle - theta))
+    
+    # Calculate forward speed based on alignment
+    module_gradient_F = np.linalg.norm(F_total)
+    if abs(phi_R) < phi_max:
+        vitesse = Kv * module_gradient_F
+    else:
+        vitesse = Kv * module_gradient_F * (phi_max / abs(phi_R))
+    
+    vitesse = np.clip(vitesse,-max_rot_speed,max_rot_speed)
+    w_speed = np.clip(Kw * phi_R, -max_rot_speed, max_rot_speed)
+    # print("Rotation: ",w_speed, " Phi_R: ",phi_R)
+    return {"forward": vitesse, "rotation": w_speed}, goal_reachead
+
+
+
 def wall_Follower(lidar, last_side, counter ,clearance_wall=25, dst_lim = 60):
     """
     Wall following using LiDAR. Follows a wall on the specified side.
@@ -215,78 +274,3 @@ def wall_Follower(lidar, last_side, counter ,clearance_wall=25, dst_lim = 60):
     rotation = np.clip(rotation, -1, 1)
     print(error_angle, rotation)
     return {"forward": forward, "rotation": rotation}, side, wall_mode
-
-
-def potential_field_control(lidar, current_pose, goal_pose, mode = "Normal"):
-    """
-    Control using potential field for goal reaching and obstacle avoidance
-    lidar : placebot object with lidar data
-    current_pose : [x, y, theta] nparray, current pose in odom or world frame
-    goal_pose : -[x, y, theta] nparray, target pose in odom or world frame
-    Notes: As lidar and odom are local only data, goal and gradient will be defined either in
-    robot (x,y) frame (centered on robot, x forward, y on left) or in odom (centered / aligned
-    on initial pose, x forward, y on left)
-    """
-    # TODO for TP2
-    # Parameters
-    Kv = 0.5  # Attractive gain
-    Kw = 0.2 # Angular gain
-    Kobs = 4000 # Repulsive gain
-    SAFE_DIST = 80.0  # Obstacle influence distance (meters)
-    phi_max = 0.07  # Maximum angle for full speed
-    max_rot_speed = 1.0
-    min_dist_threshold = 5.0  # Minimum distance to consider goal reached
-    
-    
-    # Initialize commands
-    vitesse = 0.0
-    w_speed = 0.0
-    
-    gradient_f, dRobo_Goal = attractive_field(Kv, goal_pose[0], goal_pose[1], current_pose[0], current_pose[1])
-    goal_reachead = False
-    if dRobo_Goal < min_dist_threshold:
-        print("Goal reached")
-        goal_reachead = True
-        return {"forward": 0.0, "rotation": 0.0}, goal_reachead
-    
-
-    if mode == "Normal":
-        gradient_r = repulsive_field(lidar, Kobs, SAFE_DIST, current_pose)
-    else: # When in planner mode it shouldn`t avoid obstacles
-        gradient_r = 0 
-    F_total = gradient_f  - gradient_r
-
-    # Calculate desired movement direction
-    desired_angle = np.arctan2(F_total[1], F_total[0])
-    theta = current_pose[2]
-    phi_R = np.arctan2(np.sin(desired_angle - theta), np.cos(desired_angle - theta))
-    
-    # Calculate forward speed based on alignment
-    module_gradient_F = np.linalg.norm(F_total)
-    if abs(phi_R) < phi_max:
-        vitesse = Kv * module_gradient_F
-    else:
-        vitesse = Kv * module_gradient_F * (phi_max / abs(phi_R))
-    
-    vitesse = np.clip(vitesse,-max_rot_speed,max_rot_speed)
-    w_speed = np.clip(Kw * phi_R, -max_rot_speed, max_rot_speed)
-    # print("Rotation: ",w_speed, " Phi_R: ",phi_R)
-    return {"forward": vitesse, "rotation": w_speed}, goal_reachead
-
-# def local_control(current_pose, goal_pose):
-#     """
-#     Local control function to compute forward and rotation speeds
-#     based on the current pose and the goal pose.
-    
-#     Parameters:
-#     - current_pose: [x, y, theta] nparray, current pose in world coordinates
-#     - goal_pose: [x, y, theta] nparray, goal pose in world coordinates
-    
-#     Returns:
-#     - command: dict with "forward" and "rotation" keys
-#     """
-
-#     command = {"forward":forward, "rotation": rotation}
-#     return command
-
-

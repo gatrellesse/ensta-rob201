@@ -139,6 +139,9 @@ class Planner:
         path = self.A_Star(start, goal)
         return [self.grid.conv_map_to_world(x, y) for x, y in path]
 
+    def simplify_path(self, path: list) -> list:
+        return path
+    
     def explore_frontiers(self) -> np.ndarray:
         """Frontier-based exploration placeholder"""
         return np.array([0, 0, 0])

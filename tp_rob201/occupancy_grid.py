@@ -193,7 +193,7 @@ class OccupancyGrid:
         img = np.uint8(img)
         img_color = cv2.applyColorMap(src=img, colormap=cv2.COLORMAP_JET)
 
-        if traj is not None:
+        if traj is not None and len(traj) > 0:
             # Needs to tranpose since we are receiving [[x0,y0], [x1,y1], ...]
             # where it is supposed to be [[x0 x1 x2 ...] [y0 y1 y2 ...]]
             traj_np = np.array(traj).T  # shape (2, N)
@@ -218,7 +218,7 @@ class OccupancyGrid:
         color = (255, 255, 0)
         # Obs within the search
         cv2.circle(img_color, pt1, 60, color, 1)
-        cv2.circle(img_color, pt1, 25, (255,150,0), 1)
+        
         cv2.arrowedLine(img=img_color, pt1=pt1, pt2=pt2,
                         color=(0, 0, 255), thickness=2)
         cv2.imshow("map slam", img_color)

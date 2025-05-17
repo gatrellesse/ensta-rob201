@@ -33,8 +33,8 @@ class MyRobotSlam(RobotAbstract):
         # step counter to deal with init and display
         self.counter = 0
         #self.traj_goals = [[-490,0], [-810, -140], [-900, -400]]
-        self.traj_goals = [[-490,0],[-490,-60]]
-        #self.traj_goals = [[-70,0]]
+        #self.traj_goals = [[-490,0],[-490,-60]]
+        self.traj_goals = [[-70,0]]
         #self.traj_goals =[[-310,20]]
         self.goal = self.traj_goals.pop(0)
         self.goal_reachead = False
@@ -129,7 +129,7 @@ class MyRobotSlam(RobotAbstract):
             elif(self.control_mode != "Planner"):#Starts Planner with fat map
                 print("Planner has started, returning to origin.")
                 self.occupancy_grid_Fat = copy.deepcopy(self.occupancy_grid)
-                self.occupancy_grid_Fat.enlarge_obstacles(spread_distance = 10)
+                self.occupancy_grid_Fat.enlarge_obstacles(spread_distance = 13)
                 self.planner = Planner(self.occupancy_grid_Fat)
                 self.traj_goals = self.planner.plan(np.array([0, 0, 0]), self.goal)
                 self.goal = self.traj_goals.pop(0)

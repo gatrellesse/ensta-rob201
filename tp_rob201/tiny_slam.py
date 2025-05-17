@@ -112,12 +112,14 @@ class TinySlam:
         # TODO for TP3
         if mode != "Planner": 
             traj = None
-        else:
+            x, y = self.pol_to_coord(pose, lidar.get_sensor_values(), lidar.get_ray_angles())
+            for x_coord, y_coord in zip(x, y):
+                self.grid.add_value_along_line(pose[0], pose[1], x_coord, y_coord, -1.0)
+            self.grid.add_map_points(x, y, 10.0)
+            
+        else: # Planner mode with final goal the starting point
             goal = np.array([0, 0])
-        x, y = self.pol_to_coord(pose, lidar.get_sensor_values(), lidar.get_ray_angles())
-        for x_coord, y_coord in zip(x, y):
-            self.grid.add_value_along_line(pose[0], pose[1], x_coord, y_coord, -1.0)
-        self.grid.add_map_points(x, y, 10.0)
+        
         self.counter += 1
         if self.counter == 10:
             self.grid.display_cv(robot_pose = pose, goal=goal, traj = traj)
