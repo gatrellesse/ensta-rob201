@@ -79,7 +79,7 @@ class Planner:
         while current in cameFrom:
             current = cameFrom[current]
             total_path.append(current)
-        return total_path[::-1]  # Reverse to get start->goal order
+        return total_path # goal --> start
 
     def A_Star(self, start: list, goal: list) -> list:
         """

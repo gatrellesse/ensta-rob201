@@ -103,14 +103,14 @@ class TinySlam:
         y = pose[1] + dists * np.sin(angles_world)
         return x, y
         
-    def update_map(self, lidar, pose, goal=None, traj= None, planner_mode = False):
+    def update_map(self, lidar, pose, goal=None, traj= None, mode = False):
         """
         Bayesian map update with new observation
         lidar : placebot object with lidar data
         pose : [x, y, theta] nparray, corrected pose in world coordinates
         """
         # TODO for TP3
-        if planner_mode == False: #Evitar que sem planner bugue
+        if mode != "Planner": 
             traj = None
         x, y = self.pol_to_coord(pose, lidar.get_sensor_values(), lidar.get_ray_angles())
         for x_coord, y_coord in zip(x, y):

@@ -32,15 +32,14 @@ class MyRobotSlam(RobotAbstract):
         # step counter to deal with init and display
         self.counter = 0
         #self.traj_goals = [[-490,0], [-810, -140], [-920, -400]]
-        self.traj_goals = [[-490,0],[-490,-60]]
-        #self.traj_goals = [[-70,0]]
+        #self.traj_goals = [[-490,0],[-490,-60]]
+        self.traj_goals = [[-70,0]]
         #self.traj_goals =[[-310,20]]
         self.goal = self.traj_goals.pop(0)
         self.goal_reachead = False
         self.seuil = 200
         self.last_wall_side = "unknown"
-        self.wall_mode = False
-        self.planner_mode = False
+        self.control_mode = "Normal" # Normal, Wall, Planner
         self.wall_counter = 0
         # Init SLAM object
         # Here we cheat to get an occupancy grid size that's not too large, by using the
@@ -73,21 +72,21 @@ class MyRobotSlam(RobotAbstract):
         
         # We update only if the odotometry is not too bad(test the seuil and
         # see if the map doesnt change)
-        if((self.wall_mode == False and best_score > self.seuil) or self.counter <= 20):
+        if((self.control_mode != "Wall" and best_score > self.seuil) or self.counter <= 20):
             #print(f"Score: {best_score}")
             self.counter += 1
             if(self.counter == 20):
-                self.seuil = 7000
+                self.seuil = 5000
             
             self.corrected_pose = self.tiny_slam.get_corrected_pose(self.odometer_values(), self.tiny_slam.odom_pose_ref)
-            self.tiny_slam.update_map(lidar = self.lidar(), pose= self.corrected_pose, goal=self.goal, traj=self.traj_goals, planner_mode = self.planner_mode)
-        if(self.is_stuck() and self.planner_mode == False):
-            self.wall_mode = True
+            self.tiny_slam.update_map(lidar = self.lidar(), pose= self.corrected_pose, goal=self.goal, traj=self.traj_goals, mode = self.control_mode)
+
+        if(self.is_stuck() and self.control_mode != "Planner"): # Planner can`t be stuck
+            self.control_mode = "Wall"
             self.corrected_pose = self.tiny_slam.get_corrected_pose(self.odometer_values())
             self.tiny_slam.update_map(lidar = self.lidar(), pose= self.corrected_pose, goal=self.goal)
             return self.control_wall_Follower()
-        else:
-            self.wall_mode = False
+        
         return self.control_tp2()
 
     def control_tp1(self):
@@ -126,12 +125,13 @@ class MyRobotSlam(RobotAbstract):
             if(self.traj_goals):
                 self.goal = self.traj_goals.pop(0)
                 self.goal_reachead = False
-            elif(not self.planner_mode):#Starts Planner
+                return command
+            elif(self.control_mode != "Planner"):#Starts Planner
                 print("Planner has started, returning to origin.")
                 self.traj_goals = self.planner.plan(np.array([0, 0, 0]), self.goal)
                 self.goal = self.traj_goals.pop(0)
                 self.goal_reachead = False
-                self.planner_mode = True
+                self.control_mode = "Planner"
         return command
 
     def control_wall_Follower(self):
@@ -140,9 +140,9 @@ class MyRobotSlam(RobotAbstract):
             print("Wall following mode activated with ", self.last_wall_side)
             self.wall_counter += 1
             command, self.last_wall_side , mode_flag = wall_Follower(self.lidar(), self.last_wall_side, self.wall_counter)
-            if self.wall_mode == True and mode_flag == False:
+            if self.control_mode == "Wall" and mode_flag == False:
                 print("Turning off wall mode and reseting stored poses")
                 self.wall_counter = 0
-                self.wall_mode = mode_flag
+                self.control_mode = "Normal" 
                 self.stored_poses.clear()
             return command
