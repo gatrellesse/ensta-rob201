@@ -31,12 +31,14 @@ class MyRobotSlam(RobotAbstract):
 
         # step counter to deal with init and display
         self.counter = 0
-        self.traj_goals = deque([[-490,0], [-810, -140], [-920, -400]])
-        self.goal = self.traj_goals.popleft()
+        #self.traj_goals = [[-490,0], [-810, -140], [-920, -400]]
+        self.traj_goals =[[-310,20]]
+        self.goal = self.traj_goals.pop(0)
         self.goal_reachead = False
         self.seuil = 200
         self.last_wall_side = "unknown"
         self.wall_mode = False
+        self.planner_mode = False
         self.wall_counter = 0
         # Init SLAM object
         # Here we cheat to get an occupancy grid size that's not too large, by using the
@@ -76,11 +78,8 @@ class MyRobotSlam(RobotAbstract):
                 self.seuil = 4500
             
             self.corrected_pose = self.tiny_slam.get_corrected_pose(self.odometer_values(), self.tiny_slam.odom_pose_ref)
-            vs = self.planner.get_neighbors(self.corrected_pose[:2])
-            print(f"Robot: {self.corrected_pose} voisin {vs}")
-            input(" ")
-            self.tiny_slam.update_map(lidar = self.lidar(), pose= self.corrected_pose, goal=self.goal)
-        if(self.is_stuck()):
+            self.tiny_slam.update_map(lidar = self.lidar(), pose= self.corrected_pose, goal=self.goal, traj=self.traj_goals, planner_mode = self.planner_mode)
+        if(self.is_stuck() and self.planner_mode == False):
             self.wall_mode = True
             self.corrected_pose = self.tiny_slam.get_corrected_pose(self.odometer_values())
             self.tiny_slam.update_map(lidar = self.lidar(), pose= self.corrected_pose, goal=self.goal)
@@ -123,10 +122,15 @@ class MyRobotSlam(RobotAbstract):
         if self.goal_reachead == False:
             command, self.goal_reachead = potential_field_control(self.lidar(), pose, self.goal)
         else:
+            command = {"forward": 0.0, "rotation": 0.0}
             if(self.traj_goals):
-                self.goal = self.traj_goals.popleft()
+                self.goal = self.traj_goals.pop(0)
                 self.goal_reachead = False
-            command = {"forward": 0.0, "rotation": 0.0}  
+            else:#Starts Planner
+                print("Planner has started, returning to origin.")
+                self.traj_goals = self.planner.plan(np.array([0, 0, 0]), self.goal)
+                self.goal_reachead = False
+                self.planner_mode = True
         return command
 
     def control_wall_Follower(self):
