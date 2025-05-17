@@ -32,7 +32,9 @@ class MyRobotSlam(RobotAbstract):
         # step counter to deal with init and display
         self.counter = 0
         #self.traj_goals = [[-490,0], [-810, -140], [-920, -400]]
-        self.traj_goals =[[-310,20]]
+        self.traj_goals = [[-490,0],[-490,-60]]
+        #self.traj_goals = [[-70,0]]
+        #self.traj_goals =[[-310,20]]
         self.goal = self.traj_goals.pop(0)
         self.goal_reachead = False
         self.seuil = 200
@@ -75,7 +77,7 @@ class MyRobotSlam(RobotAbstract):
             #print(f"Score: {best_score}")
             self.counter += 1
             if(self.counter == 20):
-                self.seuil = 4500
+                self.seuil = 7000
             
             self.corrected_pose = self.tiny_slam.get_corrected_pose(self.odometer_values(), self.tiny_slam.odom_pose_ref)
             self.tiny_slam.update_map(lidar = self.lidar(), pose= self.corrected_pose, goal=self.goal, traj=self.traj_goals, planner_mode = self.planner_mode)
@@ -115,8 +117,6 @@ class MyRobotSlam(RobotAbstract):
         Control function for TP2
         Main control function with full SLAM, random exploration and path planning
         """
-        #tp3
-        #pose = self.odometer_values()
         pose = self.corrected_pose
         # Compute new command speed to perform obstacle avoidance
         if self.goal_reachead == False:
@@ -126,9 +126,10 @@ class MyRobotSlam(RobotAbstract):
             if(self.traj_goals):
                 self.goal = self.traj_goals.pop(0)
                 self.goal_reachead = False
-            else:#Starts Planner
+            elif(not self.planner_mode):#Starts Planner
                 print("Planner has started, returning to origin.")
                 self.traj_goals = self.planner.plan(np.array([0, 0, 0]), self.goal)
+                self.goal = self.traj_goals.pop(0)
                 self.goal_reachead = False
                 self.planner_mode = True
         return command

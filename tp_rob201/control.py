@@ -270,6 +270,23 @@ def potential_field_control(lidar, current_pose, goal_pose):
     # print("Rotation: ",w_speed, " Phi_R: ",phi_R)
     return {"forward": vitesse, "rotation": w_speed}, goal_reachead
 
+def local_control(current_pose, goal_pose):
+    """
+    Local control function to compute forward and rotation speeds
+    based on the current pose and the goal pose.
+    
+    Parameters:
+    - current_pose: [x, y, theta] nparray, current pose in world coordinates
+    - goal_pose: [x, y, theta] nparray, goal pose in world coordinates
+    
+    Returns:
+    - command: dict with "forward" and "rotation" keys
+    """
+    
+    command = {"forward":forward, "rotation": rotation}
+    return command
+
+
 # class WallFollowerPID:
 #     def __init__(self):
 #         self.prev_error = 0.0

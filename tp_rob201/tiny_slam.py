@@ -97,6 +97,7 @@ class TinySlam:
         Convert LiDAR ranges and angles to (x, y) world coordinates.
         dists and angles should be lidar arrays.
         """
+        # Returns all objects detected in world coordinates
         angles_world = pose[2] + angles  # rotate by robot orientation
         x = pose[0] + dists * np.cos(angles_world)
         y = pose[1] + dists * np.sin(angles_world)
