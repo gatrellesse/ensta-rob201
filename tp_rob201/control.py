@@ -122,6 +122,7 @@ def repulsive_field(lidar, repulsive_gain,
     return gradient
 
 
+
 def potential_field_control(lidar, current_pose, goal_pose, mode = "Normal"):
     """
     Control using potential field for goal reaching and obstacle avoidance
@@ -134,8 +135,8 @@ def potential_field_control(lidar, current_pose, goal_pose, mode = "Normal"):
     """
     # TODO for TP2
     # Parameters
-    Kv = 0.5  # Attractive gain
-    Kw = 0.2 # Angular gain
+    Kv = 0.4  # Attractive gain
+    Kw = 0.2# Angular gain
     Kobs = 4000 # Repulsive gain
     SAFE_DIST = 80.0  # Obstacle influence distance (meters)
     phi_max = 0.07  # Maximum angle for full speed

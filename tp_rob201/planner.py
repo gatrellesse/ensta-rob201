@@ -14,7 +14,7 @@ class Planner:
 
     # Constants for occupancy values
     FREE = 0
-    OCCUPIED = 20
+    OCCUPIED = 15
 
     def __init__(self, occupancy_grid: OccupancyGrid):
         self.grid = occupancy_grid
@@ -79,7 +79,7 @@ class Planner:
         while current in cameFrom:
             current = cameFrom[current]
             total_path.append(current)
-        return total_path # goal --> start
+        return self.simplify_path(total_path) # goal --> start
 
     def A_Star(self, start: list, goal: list) -> list:
         """
@@ -140,7 +140,30 @@ class Planner:
         return [self.grid.conv_map_to_world(x, y) for x, y in path]
 
     def simplify_path(self, path: list) -> list:
-        return path
+        """
+        Simplify path by checking for straight lines
+        """
+
+        simplified_path = [path[0]]
+        for i in range(1, len(path)-1):
+            prev = np.array(simplified_path[-1])
+            curr = np.array(path[i])
+            next_p = np.array(path[i+1]) 
+            
+            vec1 = curr - prev
+            vec2 = next_p - curr
+            cross_product = np.cross(vec1, vec2)
+            
+            # Only keep point if it's not colinear with neighbors
+            if not np.isclose(cross_product, 0, atol=1e-6):
+                simplified_path.append(path[i])
+        #Assuring that the final goal is added in the last straight line
+        if not np.allclose(path[-1], simplified_path[-1]):
+            simplified_path.append(path[-1])
+
+        print(len(simplified_path), "points in simplified path, whereas original had", len(path))
+
+        return simplified_path
     
     def explore_frontiers(self) -> np.ndarray:
         """Frontier-based exploration placeholder"""

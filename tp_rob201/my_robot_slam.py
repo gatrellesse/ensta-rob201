@@ -32,9 +32,10 @@ class MyRobotSlam(RobotAbstract):
 
         # step counter to deal with init and display
         self.counter = 0
-        #self.traj_goals = [[-490,0], [-810, -140], [-900, -400]]
+        self.traj_goals = [[-490,0], [-810, -140], [-900, -300]]
         #self.traj_goals = [[-490,0],[-490,-60]]
-        self.traj_goals = [[-70,0]]
+        self.traj_original = None
+        #self.traj_goals = [[-70,0]]
         #self.traj_goals =[[-310,20]]
         self.goal = self.traj_goals.pop(0)
         self.goal_reachead = False
@@ -79,13 +80,15 @@ class MyRobotSlam(RobotAbstract):
                 self.seuil = 5000
             
             self.corrected_pose = self.tiny_slam.get_corrected_pose(self.odometer_values(), self.tiny_slam.odom_pose_ref)
-            self.tiny_slam.update_map(lidar = self.lidar(), pose= self.corrected_pose, goal=self.goal, traj=self.traj_goals, mode = self.control_mode)
+            self.tiny_slam.update_map(lidar = self.lidar(), pose= self.corrected_pose, goal=self.goal, traj=self.traj_original, mode = self.control_mode)
 
-        if(self.is_stuck() and self.control_mode != "Planner"): # Planner can`t be stuck
-            self.control_mode = "Wall"
-            self.corrected_pose = self.tiny_slam.get_corrected_pose(self.odometer_values())
-            self.tiny_slam.update_map(lidar = self.lidar(), pose= self.corrected_pose, goal=self.goal)
-            return self.control_wall_Follower()
+        # To run with wall follower as a debugger when crashing just uncomment the line below
+        # i didnt check if it works 100%
+        # if(self.is_stuck() and self.control_mode != "Planner"): # Planner can`t be stuck
+        #     self.control_mode = "Wall"
+        #     self.corrected_pose = self.tiny_slam.get_corrected_pose(self.odometer_values())
+        #     self.tiny_slam.update_map(lidar = self.lidar(), pose= self.corrected_pose, goal=self.goal)
+        #     return self.control_wall_Follower()
         
         return self.control_tp2()
 
@@ -128,15 +131,23 @@ class MyRobotSlam(RobotAbstract):
                 return command
             elif(self.control_mode != "Planner"):#Starts Planner with fat map
                 print("Planner has started, returning to origin.")
+                # self.occupancy_grid_Fat = copy.deepcopy(self.occupancy_grid)
+                cv_out_temp = self.occupancy_grid.cv_out
+                self.occupancy_grid.cv_out = None
                 self.occupancy_grid_Fat = copy.deepcopy(self.occupancy_grid)
-                self.occupancy_grid_Fat.enlarge_obstacles(spread_distance = 13)
+                self.occupancy_grid.cv_out = cv_out_temp
+
+                self.occupancy_grid_Fat.enlarge_obstacles(spread_distance = 11)
                 self.planner = Planner(self.occupancy_grid_Fat)
                 self.traj_goals = self.planner.plan(np.array([0, 0, 0]), self.goal)
+                self.traj_original = copy.deepcopy(self.traj_goals)
                 self.goal = self.traj_goals.pop(0)
                 self.goal_reachead = False
                 self.control_mode = "Planner"
+                self.seuil = 0
             else:
                 print("Final Goal reached, stopping")
+                self.traj_original = None
                 command = {"forward": 0.0, "rotation": 0.0}
                 return command
 

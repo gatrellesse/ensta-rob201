@@ -24,7 +24,6 @@ class TinySlam:
         max_Range = lidar.max_range
         distances = lidar.get_sensor_values()
         angles = lidar.get_ray_angles()
-        
         angles_filtered = angles[distances<max_Range]
         distances_filtered = distances[distances<max_Range]
         x_world, y_world = self.pol_to_coord(pose, distances_filtered, angles_filtered)

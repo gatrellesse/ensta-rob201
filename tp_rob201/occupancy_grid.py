@@ -9,7 +9,7 @@ import cv2
 import numpy as np
 from matplotlib import pyplot as plt
 
-VIDEO_OUT = False
+VIDEO_OUT = True
 
 
 class OccupancyGrid:
@@ -26,7 +26,7 @@ class OccupancyGrid:
             self.x_min_world, self.y_min_world)
         self.x_max_map, self.y_max_map = self.conv_world_to_map(
             self.x_max_world, self.y_max_world)
-
+        self.counter_traj = 0
         self.occupancy_map = np.zeros(
             (int(self.x_max_map), int(self.y_max_map)))
 
@@ -41,7 +41,7 @@ class OccupancyGrid:
         print("Enlarging obstacles")
         for x in range(self.x_max_map):
             for y in range(self.y_max_map):
-                if self.occupancy_map[x, y] > 0:
+                if self.occupancy_map[x, y] > 35:
                     # Enlarge the obstacle
                     for i in range(-spread_distance, spread_distance + 1):
                         for j in range(-spread_distance, spread_distance + 1):
@@ -193,7 +193,8 @@ class OccupancyGrid:
         img = np.uint8(img)
         img_color = cv2.applyColorMap(src=img, colormap=cv2.COLORMAP_JET)
 
-        if traj is not None and len(traj) > 0:
+        if traj is not None and len(traj) > 0 :
+            
             # Needs to tranpose since we are receiving [[x0,y0], [x1,y1], ...]
             # where it is supposed to be [[x0 x1 x2 ...] [y0 y1 y2 ...]]
             traj_np = np.array(traj).T  # shape (2, N)
@@ -201,6 +202,12 @@ class OccupancyGrid:
             traj_map = np.vstack((traj_map_x, self.y_max_map - traj_map_y))
             for i in range(len(traj_map_x) - 1):
                 cv2.line(img_color, traj_map[:, i], traj_map[:, i + 1], (180, 180, 180), 2)
+            # Draw the intermediate goal
+            # pt_x, pt_y = (traj_map_x[self.counter_traj], traj_map_y[self.counter_traj])
+            # point = (int(pt_x), self.y_max_map - int(pt_y))
+            # color = (255, 255, 0)
+            # cv2.circle(img_color, point, 3, color, -1)
+            # self.counter_traj += 1
 
         if goal is not None:
             pt_x, pt_y = self.conv_world_to_map(goal[0], goal[1])
@@ -218,7 +225,6 @@ class OccupancyGrid:
         color = (255, 255, 0)
         # Obs within the search
         cv2.circle(img_color, pt1, 60, color, 1)
-        
         cv2.arrowedLine(img=img_color, pt1=pt1, pt2=pt2,
                         color=(0, 0, 255), thickness=2)
         cv2.imshow("map slam", img_color)
